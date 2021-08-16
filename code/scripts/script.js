@@ -133,9 +133,9 @@ class Map
 			for (let x = 0; x < this.w; x++)
 			{
 				let n = this.map[x + y*this.w];
-				console.log(n);
+				//console.log(n);
 				// The (1+y) accommodates for "flipping" the canvas and the drawImage function drawing the image from top-left to bottom-right.
-				ctx.drawImage(this.texture[n], this.drawOffsetX + x*TILE_SIZE, this.drawOffsetY + SCREEN_HEIGHT - (1+y)*this.TILE_SIZE);
+				ctx.drawImage(this.texture[n], this.drawOffsetX + x*TILE_SIZE, this.drawOffsetY + SCREEN_HEIGHT - (1+y)*TILE_SIZE);
 			}
 		}
 	}
@@ -149,6 +149,7 @@ class Player
 		this.y = y;
 		this.velX = 0;
 		this.velY = 0;
+		this.gravity = -100;
 		this.width = w;
 		this.height = h;
 		this.fillColor = c;
@@ -173,9 +174,9 @@ class Player
 	draw()
 	{
 		// Draw head
-		ctx.drawImage(this.imageHead, this.x*TILE_SIZE, SCREEN_HEIGHT - (this.y+1)*TILE_SIZE);
+		ctx.drawImage(this.imageHead, this.x*TILE_SIZE, SCREEN_HEIGHT - (this.y+2)*TILE_SIZE);
 		// Draw legs
-		ctx.drawImage(this.imageHead, this.x*TILE_SIZE, SCREEN_HEIGHT - this.y*TILE_SIZE);
+		ctx.drawImage(this.imageHead, this.x*TILE_SIZE, SCREEN_HEIGHT - (this.y+1)*TILE_SIZE);
 	}
 
 	handleInput()
@@ -185,10 +186,12 @@ class Player
 			// Jump
 			if (wPressed) { this.velY = 2; };
 			// Walk left
-			if (aPressed) { this.velX = -1; };
+			if (aPressed) { this.velX = -50; };
+			if (!aPressed) { this.velX = 0; };
 			if (sPressed) { };
 			// Walk right
-			if (dPressed) { this.velX = 1; };
+			if (dPressed) { this.velX = 50; };
+			if (!dPressed) { this.velX = 0; };
 		}
 		else if (!this.isGrounded)
 		{
@@ -204,45 +207,71 @@ class Player
 
 	applyForces()
 	{
-		this.x += this.velX;
-		this.y += this.velY;
+		this.velY += this.gravity * elapsedTime/1000;
+		this.x += this.velX * elapsedTime/1000;
+		this.y += this.velY * elapsedTime/1000;
 	}
 
 	collisionDetection()
 	{
-		for (let i = 0; i < MAP_WIDTH*MAP_HEIGHT; i++)
+		for (let y = 0; y < MAP_HEIGHT; y++)
 		{
-			// How much is the player going past the edges of the current block.
-			let l = 0,
-				r = 0,
-				t = 0,
-				b = 0;
-
-			if (map[i] != "0")
+			for (let x = 0; x < MAP_WIDTH; x++)
 			{
-				// If left edge of player is inside block, push him to the right.
-				if (this.x > i && this.x < i+1)
-				{
-					l = i - this.x;
-				}
-				// If right edge of player is inside block.
-				if (this.x+this.width > i && this.x+this.width < i+1)
-				{
-					r = i - this.x+this.width;
-				}
-				// Bottom edge of player is inside block.
-				if (this.y > i && this.y < i+1)
-				{
-					t = i - this.y;
-				}
-				// Top edge of player is inside block;
-				if (this.y+this.height > i && this.y+this.height < i+1)
-				{
-					b = i - this.y+this.height
-				}
+				// How much is the player going past the edges of the current block.
+				let l = 0,
+					r = 0,
+					t = 0,
+					b = 0;
 
-				this.x += l + r;
-				this.y += t + b;
+				if (map[x + y*MAP_WIDTH] != "0")
+				{
+					// If left edge of player is inside block, push him to the right.
+					if (this.x > x && this.x < x+1)
+					{
+						//l = i - this.x;
+						this.velX = 0;
+						this.x = Math.ceil(this.x);
+						console.log("Left edge of player is inside block.\n");
+					}
+					// If right edge of player is inside block.
+					if (this.x+this.width > x && this.x+this.width < x+1)
+					{
+						//r = i - this.x+this.width;
+						this.velX = 0;
+						this.x = Math.floor(this.x);
+						console.log("Right edge of player is inside block.\n");
+					}
+					// Bottom edge of player is inside block.
+					if (this.y > y && this.y < y+1)
+					{
+						//t = i - this.y;
+						this.velY = 0;
+						this.y = Math.ceil(this.y);
+						console.log("Bottom edge of player is inside block.\n");
+					}
+					// Top edge of player is inside block.
+					if (this.y+this.height > y && this.y+this.height < y+1)
+					{
+						//b = i - this.y+this.height;
+						this.y = Math.floor(this.y);
+						this.isAerial = true;
+						console.log("Top edge of player is inside block.\n");
+					}
+
+					// If the player is right above a block.
+					if (this.y-1 == y)
+					{
+						//this.isGrounded = true;
+					}
+					else
+					{
+						this.isGrounded = false;
+						//this.isAerial = true;
+					}
+					//this.x += l + r;
+					//this.y += t + b;
+				}
 			}
 		}
 	}
@@ -379,7 +408,8 @@ function getRandomIntInclusive(min, max)
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-let player = new Player(4, 4);
+let player = new Player(4, 2);
+
 let map = new Map();
 let TILE_SIZE = 16;
 let MAP_WIDTH = 16;
